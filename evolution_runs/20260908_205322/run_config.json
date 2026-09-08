@@ -1,0 +1,22 @@
+{
+  "run_id": "20260908_205322",
+  "model": "claude-sonnet-5",
+  "n_islands": 3,
+  "island_size": 2,
+  "max_generations": 1,
+  "migration_interval": 5,
+  "patience": 5,
+  "held_out_test_matches": [
+    "J03WMX",
+    "J03WOH"
+  ],
+  "evolve_fitness_match": "J03WPY",
+  "evolve_train_matches": [
+    "J03WN1",
+    "J03WOY",
+    "J03WQQ",
+    "J03WR9"
+  ],
+  "evo_rng_seed": 42,
+  "rng_seed_param_fit": 0
+}

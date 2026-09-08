@@ -1,0 +1,30 @@
+{
+  "refit_params": {
+    "tight_space_distance_m": 2.108410335447504,
+    "frontal_approach_angle_deg": 58.735273845502896,
+    "escape_angle_deg": 110.01318096429848,
+    "high_closing_speed_mps": 1.6925976370067661,
+    "space_behind_min_m": 3.0,
+    "support_min_count": 0.6799508369954164,
+    "sideline_trap_distance_m": 3.6929341846793227,
+    "attacking_third_distance_m": 10.0
+  },
+  "refit_f1_on_evolve_set": 0.4281150159744409,
+  "per_match": {
+    "J03WMX": {
+      "f1": 0.46938775510204084,
+      "precision": 0.41818181818181815,
+      "recall": 0.5348837209302325
+    },
+    "J03WOH": {
+      "f1": 0.4195804195804196,
+      "precision": 0.39473684210526316,
+      "recall": 0.44776119402985076
+    }
+  },
+  "pooled": {
+    "f1": 0.44837758112094395,
+    "precision": 0.40860215053763443,
+    "recall": 0.49673202614379086
+  }
+}

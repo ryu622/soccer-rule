@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets
+.env
+
+# Claude Codeのローカルセッション状態(プロジェクト成果物ではない)
+.claude/
+
+# 大きい中間データ(スクリプトを再実行すれば再生成できるキャッシュ類)。
+# GitHubの1ファイル100MB制限を超えるものも含む。要約結果(JSON)はコミット対象に残す。
+
+# フェーズ4のデータセットは小さい(~260KB)ためコミット対象に残す
+
