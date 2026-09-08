@@ -1,0 +1,29 @@
+{
+  "refit_params": {
+    "pressure_distance_m": 2.475491073041208,
+    "safe_approach_angle_deg": 109.97517438681456,
+    "closing_speed_threat_mps": 2.3685995320084174,
+    "space_after_beat_m": 2.0,
+    "support_min_count": 0.6384956408671746,
+    "sideline_risk_distance_m": 6.761961182869532,
+    "congestion_max_opponents": 4.468161250589264
+  },
+  "refit_f1_on_evolve_set": 0.436099333737129,
+  "per_match": {
+    "J03WMX": {
+      "f1": 0.3368421052631579,
+      "precision": 0.3076923076923077,
+      "recall": 0.37209302325581395
+    },
+    "J03WOH": {
+      "f1": 0.4199288256227758,
+      "precision": 0.4013605442176871,
+      "recall": 0.44029850746268656
+    }
+  },
+  "pooled": {
+    "f1": 0.3721633888048411,
+    "precision": 0.3464788732394366,
+    "recall": 0.4019607843137255
+  }
+}
