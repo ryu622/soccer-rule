@@ -1,0 +1,29 @@
+{
+  "refit_params": {
+    "tight_space_distance_m": 1.5125144627407718,
+    "clear_retreat_closing_speed_mps": -1.0688315208145338,
+    "space_after_beat_distance_m": 1.0,
+    "support_min_count": 0.0,
+    "sideline_risk_distance_m": 0.0,
+    "speed_disadvantage_margin_mps": 6.8,
+    "retreating_defender_angle_deg": 142.88419923088523
+  },
+  "refit_f1_on_evolve_set": 0.5660585959093422,
+  "per_match": {
+    "J03WMX": {
+      "f1": 0.6075388026607539,
+      "precision": 0.4910394265232975,
+      "recall": 0.7965116279069767
+    },
+    "J03WOH": {
+      "f1": 0.5014925373134328,
+      "precision": 0.417910447761194,
+      "recall": 0.6268656716417911
+    }
+  },
+  "pooled": {
+    "f1": 0.5623409669211196,
+    "precision": 0.46041666666666664,
+    "recall": 0.7222222222222222
+  }
+}
