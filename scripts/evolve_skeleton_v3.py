@@ -1,58 +1,33 @@
-"""Island型進化計算 v2: 拡張特徴量(11個)・適応度の複数試合平均化・複雑さペナルティ・
-探索予算増加・ロギング修正を組み込んだ再実行。
+"""Island型進化計算 v3: 「新フィッティング」だけを効果検証するためのシンプルな設定。
 
-documents/phase3b_evolution_results.md・documents/layer_diagnosis_expanded_features.md の
-議論を受けた再設計:
+documents/phase3c_evolution_v2_results.md の一連の診断を経て、
+`scripts/compare_refit_methods.py`で3つの既存コードを新フィッティング(分位点グリッド+
+座標降下法の全探索、evolve_skeleton_v2.pyで実装)で再フィッティングした結果:
 
-1. 特徴量: 元9 + n_opponents_nearby_10m(密集度) + prev_event_was_pass(直前イベント、bool)= 11
-   (XGBoostでの重要度ジャンプが特に大きかった2個のみを追加。残り5個は見送り)
-2. 探索範囲: LLMが提案したPARAM_SPECSをそのまま使う(分位点較正はしない。
-   documents/phase3b_evolution_results.md 3.4.4節で「較正しても改善しない」ことが判明済み)
-3. 適応度: evolve側5試合(J03WPY, J03WN1, J03WOY, J03WQQ, J03WR9)の内側leave-one-out平均F1
-   (単一試合への過適合を緩和。held_out_test 2試合は一切触れない)
-4. 複雑さペナルティ: fitness = mean_F1 - 0.002 × (and/orで結合されたブール条件の総数、AST解析で機械的にカウント)
-   選択(エリート選定・トーナメント・移住)はこの penalized fitness で行う。
-   プロンプトにはペナルティの存在を一切明かさない(F1/Precision/Recallの数値のみ見せる、
-   従来通り「診断コメント一切なし」の方針を維持)。
-5. 探索予算: ランダムサーチ400→700反復(特徴量・パラメータ増加に伴う探索空間拡大への対応)
-6. ロギング: log_generation_snapshotをmigrateより前に呼ぶ(移住で即座に上書きされる個体も
-   必ず1回はログに残る、documents/phase3b_evolution_results.md 4節の既知の欠落の修正)
+    - A: 11特徴量・16条件ルール(v2, penaltyあり) held-out F1 0.370→0.368(変化なし)
+    - B: 9特徴量・ind90構造(v1, OR of ANDs)     held-out F1 0.491→0.528(+0.037、決定木0.554まであと0.026)
+    - C: 9特徴量・v1 seed0構造(AND連鎖)         held-out F1 0.467→0.365(悪化)
 
---- 2回目の実行(RUN_ID=20260908_223306)がv1(単一試合適応度)より悪化(held-out F1 0.372 vs 0.491)
-した原因を診断した結果、island内の多様性が世代3〜4で崩壊していたことが判明した
-(island size=4・エリート2体保存・トーナメント選択が4体中3体抽出という組み合わせでは、
-エリートがほぼ確実に親として選ばれ続け、mutation/crossoverの入力が実質同じ個体の複製に
-収束してしまう。island Bは4個体がバイトレベルで完全同一のコードに、island Cは6個体が
-F1小数点以下6桁まで一致するコードに収束していた)。これを受けて以下3点を追加修正した
-(呼び出し予算はほぼ変えない設計):
+B(9特徴量・OR of ANDs構造)だけが新フィッティングで明確に改善した。A・C(11特徴量、AND連鎖)は
+新フィッティングでも救えないことが確認できたため、この系統は追わない。
 
-7. エリート保存数: 2→1(island size 4のまま)。世代0以降、各islandは実質「エリート1体+
-   新規2体」の3体で回る(4体には戻さない)。保存枠を減らすことで集団の入れ替わりを速める。
-8. crossoverを廃止し、「フレッシュな乱数個体」(既存個体を一切参照せず、初期生成と同じ
-   island固有プロンプトからゼロ生成)に置き換えた。crossoverは既に均質化した集団内では
-   同系統の個体同士を混ぜるだけで新しい遺伝子を持ち込めないため、独立な多様性源として
-   fresh_randomを採用する。1世代あたりの新規個体は「mutation 1体 + fresh_random 1体」で
-   従来(mutation 1体+crossover 1体)と呼び出し数は変わらない。
-9. 移住間隔: 5世代→3世代。多様性崩壊が世代3〜4で起きていたため、5世代ごとでは手遅れになる。
+v3はBの系統(v1のisland A/B/C相当、9特徴量)に絞り、11特徴量・複雑さペナルティを外して
+v1相当のシンプルな設定に戻した上で、証明された唯一の改善要因である「新フィッティング」
+(evolve_skeleton_v2.pyのinfer_param_feature_mapping/build_candidate_grid/optimize_paramsを
+そのまま再利用)だけを組み込む。これにより、進化計算(mutation/crossover相当のfresh_randomに
+よる改良)自体もこれまでの弱いフィッティングではなく正しい評価のもとで回せるようにする。
 
---- 3回目の実行(RUN_ID=20260908_230936、多様性崩壊は解消済み)でもheld-out F1は改善せず
-(0.370)、最良個体(16条件)が実データで検証すると単一条件(distance_m<閾値)に99.6%一致する
-まで実質退化していたことが判明した(documents/phase3c_evolution_v2_results.md参照)。
-原因はoptimize_params(ランダムサーチ+座標降下法)が連続空間の任意の値を候補にできるため、
-F1をわずかでも上げるためなら条件を「常にTrue/False」に近い極端な値へ押し出せてしまうことに
-あると考えられる。決定木は生データに実在する値だけを分岐候補にする(存在しない架空の閾値は
-選べない)ため、同じ問題が起きにくい。これに倣い、フィッティング手法を以下のように変更した:
+v2から維持する変更(独立に効果検証済みのため):
+    - 適応度: evolve側5試合の内側leave-one-out平均F1(単一試合への過適合を緩和)
+    - エリート1体+fresh_random(v2で診断・修正した多様性崩壊対策)、移住間隔3世代
+    - ロギング順序修正(migrateより前にlog_generation_snapshot)
+    - APIリトライ
 
-10. 候補閾値をPARAM_SPECSの連続区間ではなく、対応する生特徴量の実データ分位点(5%刻み、
-    最大21点)から作る(infer_param_feature_mapping: predict_take_on内の`f["feature"] <op> p["param"]`
-    という比較をASTから機械的に検出してparam->feature対応を推定。build_candidate_grid: その
-    featureの値をfoldの学習データ(リーク回避のため評価対象試合を除いたデータ)から分位点化)。
-    対応する特徴量が推定できないパラメータはPARAM_SPECSのlow-high均等分割にフォールバックする。
-11. 座標降下法を「候補グリッドの全探索」に変更(±10%の連続摂動ではなく、各パラメータについて
-    候補リストの値を全部試して最良を選ぶ、を全パラメータに対して改善が無くなるまで繰り返す)。
-    ランダムサーチも同じ候補グリッドからのサンプリングに変更(連続一様分布からのサンプリングをやめる)。
+v2から外す変更:
+    - 特徴量: 11→9(元の特徴量セットに戻す)
+    - 複雑さペナルティ: 除去(LAMBDA_COMPLEXITY=0、選択は生のfitness_f1で行う)
 
-uv run python scripts/evolve_skeleton_v2.py [--islands N] [--island-size N] [--generations N]
+uv run python scripts/evolve_skeleton_v3.py [--islands N] [--island-size N] [--generations N]
     [--migration-interval N] [--patience N]
 """
 
@@ -78,14 +53,13 @@ from generate_skeleton import FEATURE_DESCRIPTIONS as FEATURE_DESCRIPTIONS_V1
 from generate_skeleton import MODEL, TASK_DESCRIPTION, extract_code
 
 RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUT_DIR = f"evolution_runs_v2/{RUN_ID}"
+OUT_DIR = f"evolution_runs_v3/{RUN_ID}"
 
-DATA_PATH = "data/tackling_features_v2.csv"
+DATA_PATH = "data/tackling_features_v2.csv"  # 9特徴量のみ使用(11特徴量版の上位互換ファイルだが新規2列は参照しない)
 FEATURE_COLUMNS = [
     "distance_m", "approach_angle_deg", "carrier_speed_mps", "opponent_speed_mps",
     "closing_speed_mps", "second_nearest_dist_m", "n_supporting_teammates",
     "dist_to_sideline_m", "dist_to_goal_line_m",
-    "n_opponents_nearby_10m", "prev_event_was_pass",
 ]
 
 # 固定シード(random.Random(42))によるオリジナルの試合割り当て(evolve_skeleton.pyと同一)を継承。
@@ -94,22 +68,15 @@ EVOLVE_SET_MATCHES = ["J03WN1", "J03WOY", "J03WQQ", "J03WR9", "J03WPY"]
 
 RNG_SEED_PARAM_FIT = 0
 EVO_RNG_SEED = 42
-N_RANDOM_SEARCH = 700  # 400から増加(特徴量・パラメータ増加に伴う探索空間拡大への対応)
+N_RANDOM_SEARCH = 700
 N_REFINE_ROUNDS = 5
-LAMBDA_COMPLEXITY = 0.002
+LAMBDA_COMPLEXITY = 0.0  # v3では複雑さペナルティを外す(選択は生のfitness_f1で行う)
 
 _id_counter = itertools.count(1)
 
-FEATURE_DESCRIPTIONS_NEW = """\
-- n_opponents_nearby_10m: ボール保持者から半径10m以内にいる相手選手の総数(密集度)。
-  多いほど周囲に相手選手が密集しており、スペースが少ない状況を意味する。
-- prev_event_was_pass: 直前に起きたプレー(誰のものでも)がパスだったかどうかを表す
-  0または1の値(既に真偽値であり、閾値パラメータは不要)。1ならボール保持者は
-  直前にパスを受けて(あるいは直前がパスの直後で)この状況に至ったことを意味する。
-"""
+FEATURE_DESCRIPTIONS = FEATURE_DESCRIPTIONS_V1
 
-FEATURE_DESCRIPTIONS = FEATURE_DESCRIPTIONS_V1.rstrip() + "\n" + FEATURE_DESCRIPTIONS_NEW
-
+# v1(scripts/evolve_skeleton.py)と同一の出力フォーマット指定(9特徴量、bool特徴量の追加指示なし)。
 BASE_OUTPUT_FORMAT = """\
 出力は必ず以下の2つを含むPythonコードブロック1個のみとしてください。説明文やコメント以外の
 自然言語は一切書かないでください。
@@ -119,12 +86,9 @@ BASE_OUTPUT_FORMAT = """\
    わかる名前にしてください(例: "tight_space_distance_m"、"support_min_count" など)。
    数値の初期値・範囲は、上記の特徴量の説明にある単位・常識的なサッカーのスケール感を踏まえて
    設定してください(例: 距離ならおおよそ0〜10m程度、角度ならおおよそ0〜180度、人数なら0〜5程度)。
-   **`prev_event_was_pass`のように既に0/1のbool値である特徴量については、閾値パラメータを
-   PARAM_SPECSに追加する必要はありません。`predict_take_on`内で`f["prev_event_was_pass"]`を
-   そのままbool条件として直接使ってください(例: `was_previous_pass = bool(f["prev_event_was_pass"])`)。**
 
 2. `predict_take_on(f: dict, p: dict) -> int` という名前の関数。
-   - `f` は上記11個の特徴量を含む辞書(キー名は上記の通り)。
+   - `f` は上記9つの特徴量を含む辞書(キー名は上記の通り)。
    - `p` は `PARAM_SPECS` のキーと同じキーを持つ辞書で、最適化後の実際のパラメータ値が入ります。
    - 戻り値は 1(仕掛ける)または 0(仕掛けない)。
    - 関数の内部では、まず戦術概念に対応する名前つきの中間変数(bool)をいくつか定義し
@@ -142,8 +106,7 @@ PARAM_SPECS = {
 
 def predict_take_on(f: dict, p: dict) -> int:
     is_example = f["distance_m"] < p["example_distance_m"]
-    was_previous_pass = bool(f["prev_event_was_pass"])
-    return 1 if (is_example and was_previous_pass) else 0
+    return 1 if is_example else 0
 ```
 """
 

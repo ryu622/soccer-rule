@@ -1,0 +1,29 @@
+{
+  "refit_params": {
+    "tight_space_distance_m": 1.8191206666958628,
+    "head_on_angle_deg": 70.0,
+    "retreating_angle_deg": 108.44120928831585,
+    "open_space_dist_m": 2.0,
+    "support_min_count": 0.0,
+    "sideline_danger_dist_m": 1.0,
+    "speed_advantage_mps": -1.0
+  },
+  "refit_f1_on_evolve_set": 0.5094130675526024,
+  "per_match": {
+    "J03WMX": {
+      "f1": 0.5089285714285714,
+      "precision": 0.41304347826086957,
+      "recall": 0.6627906976744186
+    },
+    "J03WOH": {
+      "f1": 0.478134110787172,
+      "precision": 0.3923444976076555,
+      "recall": 0.6119402985074627
+    }
+  },
+  "pooled": {
+    "f1": 0.49557522123893805,
+    "precision": 0.4041237113402062,
+    "recall": 0.6405228758169934
+  }
+}

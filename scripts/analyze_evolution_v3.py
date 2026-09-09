@@ -1,6 +1,6 @@
-"""evolve_skeleton_v2.py の実行結果を可視化し、held-out試合で最終評価する。
+"""evolve_skeleton_v3.py の実行結果を可視化し、held-out試合で最終評価する。
 
-uv run python scripts/analyze_evolution_v2.py [--run-id RUN_ID]
+uv run python scripts/analyze_evolution_v3.py [--run-id RUN_ID]
 """
 
 from __future__ import annotations
@@ -20,11 +20,10 @@ plt.rcParams["font.family"] = "Hiragino Sans"
 import pandas as pd
 from sklearn.metrics import f1_score, precision_score, recall_score
 
-from evolve_skeleton_v2 import (
+from evolve_skeleton_v3 import (
     DATA_PATH,
     EVOLVE_SET_MATCHES,
     HELD_OUT_TEST_MATCHES,
-    N_RANDOM_SEARCH,
     RNG_SEED_PARAM_FIT,
     build_candidate_grid,
     infer_param_feature_mapping,
@@ -37,9 +36,9 @@ FIG_DIR = "documents/figures"
 
 
 def latest_run_dir() -> str:
-    dirs = sorted(glob.glob("evolution_runs_v2/*"))
+    dirs = sorted(glob.glob("evolution_runs_v3/*"))
     if not dirs:
-        raise FileNotFoundError("evolution_runs_v2/ にディレクトリが見つかりません")
+        raise FileNotFoundError("evolution_runs_v3/ にディレクトリが見つかりません")
     return dirs[-1]
 
 
@@ -52,22 +51,22 @@ def load_population(run_dir: str) -> pd.DataFrame:
 
 
 def plot_progress(df: pd.DataFrame, run_config: dict, out_path: str) -> None:
-    progress = df.groupby(["generation", "current_island"])["penalized_fitness"].max().reset_index()
+    progress = df.groupby(["generation", "current_island"])["fitness_f1"].max().reset_index()
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     colors = {"A": "tab:blue", "B": "tab:orange", "C": "tab:green"}
     for island, sub in progress.groupby("current_island"):
         sub = sub.sort_values("generation")
-        ax.plot(sub["generation"], sub["penalized_fitness"], marker="o", label=f"island {island}", color=colors.get(island))
+        ax.plot(sub["generation"], sub["fitness_f1"], marker="o", label=f"island {island}", color=colors.get(island))
 
-    migration_interval = run_config.get("migration_interval", 5)
+    migration_interval = run_config.get("migration_interval", 3)
     max_gen = int(progress["generation"].max())
     for gen in range(migration_interval, max_gen + 1, migration_interval):
         ax.axvline(gen, color="gray", linestyle="--", linewidth=0.8, alpha=0.6)
 
     ax.set_xlabel("generation")
-    ax.set_ylabel("penalized fitness (5-fold平均F1 - 0.002*条件数)")
-    ax.set_title("進化計算v2の世代推移(破線=移住が発生した世代)")
+    ax.set_ylabel("fitness F1 (5-fold平均, ペナルティなし)")
+    ax.set_title("進化計算v3の世代推移(新フィッティング・9特徴量・破線=移住)")
     ax.legend()
     fig.tight_layout()
     fig.savefig(out_path, dpi=140)
@@ -121,18 +120,18 @@ def main() -> None:
     parser.add_argument("--run-id", default=None)
     args = parser.parse_args()
 
-    run_dir = f"evolution_runs_v2/{args.run_id}" if args.run_id else latest_run_dir()
+    run_dir = f"evolution_runs_v3/{args.run_id}" if args.run_id else latest_run_dir()
     print(f"analyzing {run_dir}")
 
     run_config = json.load(open(f"{run_dir}/run_config.json"))
     df = load_population(run_dir)
 
     os.makedirs(FIG_DIR, exist_ok=True)
-    plot_progress(df, run_config, f"{FIG_DIR}/evolution_v2_progress.png")
+    plot_progress(df, run_config, f"{FIG_DIR}/evolution_v3_progress.png")
 
-    best_row = df.loc[df["penalized_fitness"].idxmax()]
+    best_row = df.loc[df["fitness_f1"].idxmax()]
     print(f"best individual: {best_row['id']} island(origin)={best_row['origin_island']} method={best_row['method']} "
-          f"fitness_f1={best_row['fitness_f1']:.3f} conditions={best_row['condition_count']} penalized={best_row['penalized_fitness']:.3f}")
+          f"fitness_f1={best_row['fitness_f1']:.3f}")
 
     held_out_results = evaluate_on_held_out(best_row["code"], best_row["param_specs"])
     print("held-out evaluation:")
@@ -143,7 +142,6 @@ def main() -> None:
 
     print(f"\ntotal individuals evaluated: {df['id'].nunique()}")
     print(f"errors encountered: {df[df['error'].notna()]['id'].nunique()} individuals")
-    print(f"\ncondition_count distribution:\n{df.groupby('id')['condition_count'].first().describe()}")
 
 
 if __name__ == "__main__":
